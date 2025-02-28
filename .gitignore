@@ -6,3 +6,4 @@ src-compressed-string.base64
 .minify.json
 node_modules/
 *.swp
+02_main.js
