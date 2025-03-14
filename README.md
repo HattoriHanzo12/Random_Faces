@@ -34,6 +34,24 @@ Below are static captures of three example Random Face mints, prepared for inscr
   ![Random Face Mint 12](visuals/random_face_mint_12.png)  
   Inscription ID: (Pending minting)
 
+## Additional Trait Examples
+Below are additional examples of Random Face variations, showcasing the diversity of traits (e.g., backgrounds, face colors) generated for this project:
+
+- **Random Face Example 3**:  
+  ![Random Face Example 3](visuals/random_face_mint_3.png)
+
+- **Random Face Example 4**:  
+  ![Random Face Example 4](visuals/random_face_mint_4.png)
+
+- **Random Face Example 6**:  
+  ![Random Face Example 6](visuals/random_face_mint_6.png)
+
+- **Random Face Example 7**:  
+  ![Random Face Example 7](visuals/random_face_mint_7.png)
+
+- **Random Face Example 10**:  
+  ![Random Face Example 10](visuals/random_face_mint_10.png)
+
 *Note: These are static snapshots; live faces change with each view due to p5.js randomization.*
 
 ## How It Was Created
