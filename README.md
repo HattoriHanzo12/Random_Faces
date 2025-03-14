@@ -9,8 +9,8 @@ This project evolved through several key steps, with significant inspiration and
 1. **Conceptualization**: Inspired by On-chain Monkey (OCM)’s innovative use of Ordinals for digital collectibles, I set out to create random SVG faces on Bitcoin, learning from OCM’s approach to blockchain art.
 2. **Script Development**: I wrote `generate.js` to produce dynamic faces, iterating on design and randomness. OCM’s p5.js examples guided my learning, while Grok provided critical insights on JavaScript and p5.js implementation, helping me debug and optimize the generation process.
 3. **Inscription Preparation**: Using `all_inscriptions.txt` and `inscriptions.json`, I prepared metadata, leveraging OCM’s structuring techniques. Grok assisted in understanding JSON formatting and Git workflows, ensuring smooth management of inscription data.
-4. **Minting (In Progress)**: Inscriptions are being prepared for minting using a synced Bitcoin Core node on an external drive at `/Volumes/BitcoinDrive/Bitcoin` and the `ord` CLI with an index at `/Volumes/BitcoinDrive/ord`. The `ord` index is currently syncing (from block 854067 to 887766 as of the last update), a process I refined with OCM’s documentation and Grok’s step-by-step guidance on node setup and `ord` usage. Three test mints will be created as examples, with their details documented below once complete.
-5. **Visualization and Documentation**: I captured static PNGs of three example mints by creating `sketch.js` with Grok’s help to use p5.js rendering. Grok also played a pivotal role in crafting this README, providing clarity and structure to document my journey.
+4. **Minting (In Progress)**: Inscriptions are being prepared for minting using a synced Bitcoin Core node on an external drive at `/Volumes/BitcoinDrive/Bitcoin` and the `ord` CLI with an index at `/Volumes/BitcoinDrive/ord`. The `ord` index is currently syncing (from block 854067 to 887766 as of the last update), a process I refined with OCM’s documentation and Grok’s step-by-step guidance on node setup and `ord` usage. Three test mints have been selected (`random_face_mint_5.png`, `random_face_mint_11.png`, `random_face_mint_12.png`), with their details documented below once minted.
+5. **Visualization and Documentation**: I captured static PNGs of example mints by creating `sketch.js` with Grok’s help to use p5.js rendering, adjusting eye shapes and backgrounds for variety. Grok also played a pivotal role in crafting this README, providing clarity and structure to document my journey.
 
 ## Project Details
 - **Protocol**: Ordinals
@@ -22,16 +22,16 @@ This project evolved through several key steps, with significant inspiration and
 ## Examples of Random Face Mints
 Below are static captures of three example Random Face mints, prepared for inscription to illustrate the project's diversity. Their inscription IDs will be listed for verification once minted:
 
-- **Random Face Mint 0**:  
-  ![Random Face Mint 0](visuals/random_face_mint_0.png)  
+- **Random Face Mint 5**:  
+  ![Random Face Mint 5](visuals/random_face_mint_5.png)  
   Inscription ID: (Pending minting)
 
-- **Random Face Mint 1**:  
-  ![Random Face Mint 1](visuals/random_face_mint_1.png)  
+- **Random Face Mint 11**:  
+  ![Random Face Mint 11](visuals/random_face_mint_11.png)  
   Inscription ID: (Pending minting)
 
-- **Random Face Mint 2**:  
-  ![Random Face Mint 2](visuals/random_face_mint_2.png)  
+- **Random Face Mint 12**:  
+  ![Random Face Mint 12](visuals/random_face_mint_12.png)  
   Inscription ID: (Pending minting)
 
 *Note: These are static snapshots; live faces change with each view due to p5.js randomization.*
@@ -47,8 +47,8 @@ Below are static captures of three example Random Face mints, prepared for inscr
 
 ### Minting Process
 1. **Setup**: Synced a Bitcoin Core node on an external drive at `/Volumes/BitcoinDrive/Bitcoin` with `txindex=1` enabled, using RPC authentication with `--bitcoin-rpc-username=[YOUR_RPC_USERNAME]`, guided by OCM’s setup guides and Grok’s troubleshooting assistance.
-2. **Generation**: Ran `generate.js` to create HTML files with random traits, then used `sketch.js` to visualize and save PNGs, with Grok’s help in refining the code.
-3. **Inscription (In Progress)**: Currently syncing the `ord` index to match Bitcoin Core’s block height (887766). Once synced, `ord` will be used with a custom data directory (`/Volumes/BitcoinDrive/ord`) to inscribe the PNGs with a specified fee rate, tracking IDs in `all_inscriptions.txt`, streamlined by Grok’s Git and `ord` command explanations. Three test mints will be inscribed as examples.
+2. **Generation**: Ran `generate.js` to create HTML files with random traits, then used `sketch.js` to visualize and save PNGs, with Grok’s help in refining the code for varied eye shapes and backgrounds.
+3. **Inscription (In Progress)**: Currently syncing the `ord` index to match Bitcoin Core’s block height (887766). Once synced, `ord` will be used with a custom data directory (`/Volumes/BitcoinDrive/ord`) to inscribe the PNGs with a specified fee rate, tracking IDs in `all_inscriptions.txt`, streamlined by Grok’s Git and `ord` command explanations. Three test mints (`random_face_mint_5.png`, `random_face_mint_11.png`, `random_face_mint_12.png`) are prepared as examples.
 4. **Verification**: Will confirm inscriptions on [Ordinals.com](https://ordinals.com) and [Ordiscan](https://ordiscan.com), following OCM’s practices, once minted.
 
 ## Repository Structure
