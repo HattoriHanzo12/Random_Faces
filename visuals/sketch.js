@@ -1,42 +1,44 @@
-let savedCount = 0;
-
 function setup() {
-  createCanvas(400, 400); // Match the visual size
-  for (let i = 0; i < 3; i++) {
-    randomSeed(i); // Ensure different faces
-    background(getRandomColor()); // Random background like body
-    fill(getRandomColor()); // Random face color
-    ellipse(width / 2, height / 2, 200, 200); // Face circle (200px)
-
-    // Eyes
-    fill(255); // White eyes
-    let eyeSize = Math.floor(Math.random() * 31) + 20; // 20-50px
-    ellipse(width / 2 - 50, height / 2 - 20, eyeSize, eyeSize); // Left eye
-    ellipse(width / 2 + 50, height / 2 - 20, eyeSize, eyeSize); // Right eye
-    fill(0); // Black pupils
-    let pupilSize = eyeSize * 0.5; // Approximate pupil size
-    ellipse(width / 2 - 50, height / 2 - 20, pupilSize, pupilSize); // Left pupil
-    ellipse(width / 2 + 50, height / 2 - 20, pupilSize, pupilSize); // Right pupil
-
-    // Mouth
-    noFill();
-    arc(width / 2, height / 2 + 30, 80, 40, 0, PI); // Fixed mouth shape
-
-    saveCanvas('random_face_mint_' + i + '.png', 'png');
+  createCanvas(200, 200);
+  for (let i = 0; i < 5; i++) { // Generate 5 new samples
+    saveFace(i + 8); // Start from index 8 to avoid overwriting 0-7
   }
-  noLoop(); // Stop after saving
 }
 
-function draw() {
-  // Empty to avoid continuous drawing
+function saveFace(index) {
+  // Random background
+  background(random(255), random(255), random(255));
+  generateFace();
+  save('random_face_mint_' + index + '.png');
 }
 
-// Random color generator (HEX)
-function getRandomColor() {
-  const letters = '0123456789ABCDEF';
-  let color = '#';
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
+function generateFace() {
+  // Random face color
+  let faceColor = color(random(100, 200), random(100, 200), random(100, 200));
+  fill(faceColor);
+  ellipse(width / 2, height / 2, 100, 100); // Head
+
+  // Random eye shapes and positions
+  let eyeSize = random(8, 15); // Random eye diameter
+  let eyeOffsetX = random(15, 25); // Random horizontal offset
+  let eyeOffsetY = random(15, 25); // Random.Concurrent vertical offset
+  let eyeShape = random(1); // 0-1 to decide shape (circle or oval)
+  let ovalHeight = random(5, 12); // Random vertical stretch for oval
+
+  // Debug: Log the random values to ensure they're changing
+  console.log("Eye Size: " + eyeSize + ", OffsetX: " + eyeOffsetX + ", OffsetY: " + eyeOffsetY + ", Shape: " + eyeShape);
+
+  fill(0); // Eyes in black
+  if (eyeShape < 0.5) {
+    // Circular eyes
+    ellipse(width / 2 - eyeOffsetX, height / 2 - eyeOffsetY, eyeSize, eyeSize);
+    ellipse(width / 2 + eyeOffsetX, height / 2 - eyeOffsetY, eyeSize, eyeSize);
+  } else {
+    // Oval eyes
+    ellipse(width / 2 - eyeOffsetX, height / 2 - eyeOffsetY, eyeSize, ovalHeight);
+    ellipse(width / 2 + eyeOffsetX, height / 2 - eyeOffsetY, eyeSize, ovalHeight);
   }
-  return color;
+
+  // Smile with random height
+  arc(width / 2, height / 2 + 20, 40, random(15, 25), 0, PI);
 }
