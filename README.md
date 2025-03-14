@@ -21,19 +21,17 @@ This project evolved through several key steps, with significant inspiration and
 
 ## Examples of Random Face Mints
 Below are static captures of three example Random Face mints, prepared for inscription to illustrate the project's diversity. Their inscription IDs will be listed for verification once minted:
-## Examples of Random Face Mints
-Below are static captures of three example Random Face mints, prepared for inscription to illustrate the project's diversity. Their inscription IDs will be listed for verification once minted:
 
 - **Random Face Mint 5**:  
-  ![Random Face Mint 5](mint/random_face_mint_5.png)  
+  ![Random Face Mint 5](visuals/random_face_mint_5.png)  
   Inscription ID: (Pending minting)
 
 - **Random Face Mint 11**:  
-  ![Random Face Mint 11](mint/random_face_mint_11.png)  
+  ![Random Face Mint 11](visuals/random_face_mint_11.png)  
   Inscription ID: (Pending minting)
 
 - **Random Face Mint 12**:  
-  ![Random Face Mint 12](mint/random_face_mint_12.png)  
+  ![Random Face Mint 12](visuals/random_face_mint_12.png)  
   Inscription ID: (Pending minting)
 
 ## Additional Trait Examples
