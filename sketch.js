@@ -1,7 +1,7 @@
 function setup() {
   createCanvas(200, 200);
-  for (let i = 1; i <= 2; i++) { // Generate 2 samples for indices 1 and 2
-    saveFace(i);
+  for (let i = 0; i < 5; i++) { // Generate 5 new samples
+    saveFace(i + 8); // Start from index 8 to avoid overwriting 0-7
   }
 }
 
@@ -21,7 +21,7 @@ function generateFace() {
   // Random eye shapes and positions
   let eyeSize = random(8, 15); // Random eye diameter
   let eyeOffsetX = random(15, 25); // Random horizontal offset
-  let eyeOffsetY = random(15, 25); // Random vertical offset
+  let eyeOffsetY = random(15, 25); // Random.Concurrent vertical offset
   let eyeShape = random(1); // 0-1 to decide shape (circle or oval)
   let ovalHeight = random(5, 12); // Random vertical stretch for oval
 
