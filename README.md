@@ -21,10 +21,10 @@ This project creates unique Random Faces as PNG inscriptions on the Bitcoin bloc
   Inscription ID: 1783d64438889e7c632f0e402186cdcaa778d7b06b08de7dfb18d3fb76c2c9c4i0
 - **Random Face Mint 1 (PNG)**:  
   ![Random Face Mint 1](visuals/random_face_mint_1.png)  
-  Inscription ID: [PNG_MINT_1_IDi0]
+  Inscription ID: 0373d422950c4085f7e23f5ae2860e31bd25ae73cfba27b3faeecf11495f1aa1i0
 - **Random Face Mint 2 (PNG)**:  
-  ![Random Face Mint 2](visuals/random_face_mint_2.png)  
-  Inscription ID: [PNG_MINT_2_IDi0]
+  ![Random Face Mint 2](visuals/random_face_mint_2.png
+  Inscription ID: 8a8583c22b2f411bb3a05a8be51f0cb361b48d8693f9f139bd6cd78a67e1e1edi0
 
 ## Files
 - `sketch.js`: p5.js code to generate random face PNGs.
