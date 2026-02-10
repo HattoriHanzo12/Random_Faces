@@ -7,3 +7,6 @@ src-compressed-string.base64
 node_modules/
 *.swp
 02_main.js
+.env
+.env.*
+\!.env.example
