@@ -38,7 +38,7 @@ No gradients, stars, accessories, brows, or overlays are used in classic mode.
 2. `js/app.js`: seed/URL/UI controller
 3. `js/face.js`: classic deterministic renderer
 4. `js/gallery.js`: minted gallery loader
-5. `data/minted_faces.json`: gallery source of truth
+5. `data/minted_faces.json`: gallery source of truth (can be empty until new classic mints are added)
 6. `visuals/`: minted PNG assets
 7. `.github/workflows/deploy.yml`: `main -> gh-pages` deployment
 
@@ -48,11 +48,11 @@ Use this object shape in `data/minted_faces.json`:
 
 ```json
 {
-  "slug": "random-face-mint-1",
-  "title": "Random Face Mint 1",
-  "image": "visuals/random_face_mint_1.png",
-  "inscriptionId": "0373...i0",
-  "explorerUrl": "https://ordinals.com/inscription/0373...i0"
+  "slug": "classic-face-mint-001",
+  "title": "Classic Face Mint 001",
+  "image": "visuals/classic_face_mint_001.png",
+  "inscriptionId": "replace-with-inscription-idi0",
+  "explorerUrl": "https://ordinals.com/inscription/replace-with-inscription-idi0"
 }
 ```
 
