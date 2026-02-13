@@ -1,0 +1,16 @@
+[
+  {
+    "slug": "random-face-mint-1",
+    "title": "Random Face Mint 1",
+    "image": "visuals/random_face_mint_1.png",
+    "inscriptionId": "0373d422950c4085f7e23f5ae2860e31bd25ae73cfba27b3faeecf11495f1aa1i0",
+    "explorerUrl": "https://ordinals.com/inscription/0373d422950c4085f7e23f5ae2860e31bd25ae73cfba27b3faeecf11495f1aa1i0"
+  },
+  {
+    "slug": "random-face-mint-2",
+    "title": "Random Face Mint 2",
+    "image": "visuals/random_face_mint_2.png",
+    "inscriptionId": "8a8583c22b2f411bb3a05a8be51f0cb361b48d8693f9f139bd6cd78a67e1e1edi0",
+    "explorerUrl": "https://ordinals.com/inscription/8a8583c22b2f411bb3a05a8be51f0cb361b48d8693f9f139bd6cd78a67e1e1edi0"
+  }
+]

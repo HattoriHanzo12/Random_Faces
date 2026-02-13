@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Random Faces</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #05050b;
+      --bg-alt: #0f1420;
+      --panel: rgba(8, 16, 24, 0.84);
+      --line: rgba(119, 220, 255, 0.24);
+      --line-strong: rgba(124, 255, 201, 0.52);
+      --text: #e7fcff;
+      --muted: #9bc1cf;
+      --accent: #7cffc9;
+      --accent-alt: #76d5ff;
+      --danger: #ff7a95;
+      --radius: 18px;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Chakra Petch", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 14%, rgba(118, 213, 255, 0.13), transparent 38%),
+        radial-gradient(circle at 88% 82%, rgba(124, 255, 201, 0.11), transparent 42%),
+        linear-gradient(140deg, var(--bg-main), var(--bg-alt));
+      padding: 20px;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.24;
+      background-image:
+        linear-gradient(0deg, transparent 95%, rgba(124, 255, 201, 0.4) 96%, transparent 97%),
+        linear-gradient(90deg, transparent 95%, rgba(124, 255, 201, 0.4) 96%, transparent 97%);
+      background-size: 28px 28px;
+      z-index: -1;
+    }
+
+    .site {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(160deg, rgba(9, 22, 35, 0.88), rgba(8, 12, 22, 0.88));
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 3vw, 30px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -60px;
+      top: -90px;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 255, 201, 0.22), transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3rem);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      text-shadow: 0 0 24px rgba(124, 255, 201, 0.35);
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      max-width: 72ch;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.45;
+    }
+
+    .switcher {
+      display: inline-flex;
+      gap: 8px;
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(6, 12, 20, 0.62);
+      padding: 6px;
+    }
+
+    .switcher button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .switcher button:hover {
+      color: var(--text);
+      background: rgba(118, 213, 255, 0.16);
+    }
+
+    .switcher button.is-active {
+      color: #052218;
+      background: linear-gradient(90deg, var(--accent), var(--accent-alt));
+      box-shadow: 0 0 18px rgba(124, 255, 201, 0.3);
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: clamp(16px, 2.5vw, 24px);
+    }
+
+    .panel[hidden] {
+      display: none;
+    }
+
+    .generator-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+
+    .canvas-wrap {
+      width: min(100%, 480px);
+      aspect-ratio: 1 / 1;
+      border-radius: 16px;
+      border: 1px solid var(--line-strong);
+      background: linear-gradient(180deg, rgba(3, 12, 20, 0.5), rgba(2, 8, 12, 0.8));
+      overflow: hidden;
+      margin: 0 auto;
+      box-shadow: 0 0 32px rgba(118, 213, 255, 0.24);
+    }
+
+    #face-canvas {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    #face-canvas canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    .seed-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .seed-row input {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(7, 12, 20, 0.9);
+      color: var(--text);
+      padding: 11px 12px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.9rem;
+    }
+
+    .seed-row input:focus-visible {
+      outline: 2px solid rgba(124, 255, 201, 0.4);
+      outline-offset: 0;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button.action {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      background: rgba(8, 16, 28, 0.78);
+      padding: 10px 13px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.84rem;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    button.action:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .status {
+      margin: 0;
+      min-height: 1.2rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .seed-value {
+      margin: 0;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.88rem;
+      color: var(--accent);
+      word-break: break-word;
+    }
+
+    .trait-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .trait-list li {
+      border: 1px solid rgba(118, 213, 255, 0.35);
+      background: rgba(5, 13, 22, 0.82);
+      color: #d0f0ff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.02em;
+    }
+
+    .gallery-intro {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .mint-card {
+      border: 1px solid var(--line);
+      background: rgba(5, 11, 19, 0.86);
+      border-radius: 14px;
+      overflow: hidden;
+      display: grid;
+      align-content: start;
+    }
+
+    .mint-card img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      image-rendering: pixelated;
+      display: block;
+      border-bottom: 1px solid rgba(118, 213, 255, 0.3);
+    }
+
+    .mint-meta {
+      padding: 10px 12px 12px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .mint-meta h3 {
+      margin: 0;
+      font-size: 0.96rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .mint-meta code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.76rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .mint-meta a {
+      color: var(--accent);
+      font-size: 0.84rem;
+      text-decoration: none;
+    }
+
+    .mint-meta a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.84rem;
+      padding-bottom: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .generator-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        width: min(100%, 520px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="site">
+    <header class="hero">
+      <h1>Random Faces</h1>
+      <p>
+        Hybrid launch mode: generate deterministic live faces from a shareable seed, then browse the minted PNG archive.
+      </p>
+      <div class="switcher" role="tablist" aria-label="Site sections">
+        <button type="button" class="is-active" data-view="generator" role="tab" aria-selected="true">Live Generator</button>
+        <button type="button" data-view="gallery" role="tab" aria-selected="false">Minted Gallery</button>
+      </div>
+    </header>
+
+    <section id="generator-panel" class="panel" role="tabpanel" aria-label="Live generator">
+      <div class="generator-grid">
+        <div class="canvas-wrap">
+          <div id="face-canvas" aria-live="polite"></div>
+        </div>
+
+        <div class="controls">
+          <div class="seed-row">
+            <input id="seed-input" type="text" placeholder="Enter a seed (e.g. abc123)" maxlength="64" aria-label="Face seed">
+            <button id="apply-seed" class="action" type="button">Apply Seed</button>
+          </div>
+          <div class="button-row">
+            <button id="randomize-seed" class="action" type="button">Refresh Face</button>
+            <button id="copy-link" class="action" type="button">Copy Share Link</button>
+            <button id="download-face" class="action" type="button">Download PNG</button>
+          </div>
+          <p class="status" id="generator-status"></p>
+          <p class="seed-value">Current seed: <span id="current-seed">-</span></p>
+          <ul class="trait-list" id="trait-list" aria-label="Current trait summary"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="gallery-panel" class="panel" role="tabpanel" aria-label="Minted gallery" hidden>
+      <p class="gallery-intro">On-chain minted PNG faces from this collection.</p>
+      <p class="status" id="gallery-status"></p>
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </section>
+
+    <footer>
+      Source branch: <code>main</code> | Deploy branch: <code>gh-pages</code>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
