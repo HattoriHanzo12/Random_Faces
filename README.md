@@ -1,36 +1,50 @@
 # Random Faces
 
-Random Faces is a hybrid collection site:
+Random Faces uses a classic p5-style live renderer plus a minted PNG gallery.
 
-1. **Live Generator**: deterministic p5.js face rendering from a shareable `?seed=` URL.
-2. **Minted Gallery**: static PNG faces that have already been inscribed.
+## Live Generator
 
-The same seed always creates the same face, while a new seed creates a different face.
+1. Deterministic URL contract is preserved:
+   - `/?seed=<string>` always renders the same face.
+   - `/` auto-generates a seed and writes it to the URL.
+2. Canonical render/export size is `800x800`.
+3. Generator controls are intentionally simple:
+   - Seed input + `Apply Seed`
+   - `Refresh Face`
+   - `Copy Share Link`
+   - `Download PNG`
 
-## Public URL Contract
+## Renderer Contract
 
-1. `/?seed=<string>` is supported.
-2. The seed is deterministic:
-   - `/?seed=abc123` should always render the same face.
-3. When no seed is provided, a random seed is generated and injected into the URL.
+`js/face.js` exports:
+
+1. `createRngFromSeed(seed)`
+2. `deriveTraits(seed)`
+3. `renderFace(p5Instance, traits)`
+
+The renderer follows the snippet-first classic style:
+
+1. Flat background
+2. Filled face circle
+3. Two black eyes (ellipse variation allowed)
+4. White highlights
+5. Black mouth ellipse
+
+No gradients, stars, accessories, brows, or overlays are used in classic mode.
 
 ## Project Structure
 
-1. `index.html`: canonical site entry with two tabs (Live Generator, Minted Gallery).
-2. `js/face.js`: deterministic renderer contract:
-   - `createRngFromSeed(seed)`
-   - `deriveTraits(seed)`
-   - `renderFace(p5Instance, traits)`
-3. `js/app.js`: page controller for seed handling, URL syncing, share link copy, and PNG download.
-4. `js/gallery.js`: manifest fetch and gallery card rendering.
-5. `data/minted_faces.json`: source of truth for minted gallery data.
-6. `visuals/`: local PNG assets used by the gallery.
-7. `.github/workflows/deploy.yml`: automated `main -> gh-pages` deployment workflow.
-8. `sketch.js` and `src/`: internal generation tooling, not runtime web dependencies.
+1. `index.html`: site entry and UI
+2. `js/app.js`: seed/URL/UI controller
+3. `js/face.js`: classic deterministic renderer
+4. `js/gallery.js`: minted gallery loader
+5. `data/minted_faces.json`: gallery source of truth
+6. `visuals/`: minted PNG assets
+7. `.github/workflows/deploy.yml`: `main -> gh-pages` deployment
 
 ## Gallery Manifest Format
 
-Update `data/minted_faces.json` with objects in this shape:
+Use this object shape in `data/minted_faces.json`:
 
 ```json
 {
@@ -44,32 +58,22 @@ Update `data/minted_faces.json` with objects in this shape:
 
 ## Local Preview
 
-Because this project uses ES modules (`js/*.js`) and `fetch` for JSON, preview through a local HTTP server:
+Run:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open:
+Open:
 
-1. `http://localhost:8000/` for random seed mode.
-2. `http://localhost:8000/?seed=abc123` for deterministic mode.
+1. `http://localhost:8000/`
+2. `http://localhost:8000/?seed=abc123`
 
 ## Deployment Model
 
 1. `main` is the source branch.
-2. `gh-pages` is deploy-output only.
-3. On each push to `main`, GitHub Actions publishes a static artifact (`index.html`, `js/`, `data/`, `visuals/`) to `gh-pages`.
-4. Do not manually edit `gh-pages`.
-
-## Inscriptions
-
-1. Parent logic (`Visuals.js`, optional legacy parent):
-   - `1783d64438889e7c632f0e402186cdcaa778d7b06b08de7dfb18d3fb76c2c9c4i0`
-2. Random Face Mint 1:
-   - `0373d422950c4085f7e23f5ae2860e31bd25ae73cfba27b3faeecf11495f1aa1i0`
-3. Random Face Mint 2:
-   - `8a8583c22b2f411bb3a05a8be51f0cb361b48d8693f9f139bd6cd78a67e1e1edi0`
+2. `gh-pages` is deploy output only.
+3. Push to `main` triggers GitHub Actions deployment.
 
 ## License
 

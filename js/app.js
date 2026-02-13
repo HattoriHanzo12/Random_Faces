@@ -3,7 +3,7 @@ import { initGallery } from "./gallery.js";
 
 const SEED_PARAM = "seed";
 const MAX_SEED_LENGTH = 64;
-const CANVAS_SIZE = 480;
+const CANVAS_SIZE = 800;
 
 const elements = {
   tabButtons: Array.from(document.querySelectorAll("[data-view]")),
@@ -16,7 +16,6 @@ const elements = {
   copyLink: document.getElementById("copy-link"),
   downloadFace: document.getElementById("download-face"),
   currentSeed: document.getElementById("current-seed"),
-  traitList: document.getElementById("trait-list"),
   generatorStatus: document.getElementById("generator-status"),
   galleryStatus: document.getElementById("gallery-status"),
   galleryGrid: document.getElementById("gallery-grid")
@@ -56,25 +55,6 @@ function setSeedInUrl(seed) {
 function setGeneratorStatus(message, isError = false) {
   elements.generatorStatus.textContent = message;
   elements.generatorStatus.classList.toggle("error", isError);
-}
-
-function traitLabels(traits) {
-  return [
-    `Palette: ${traits.paletteName}`,
-    `Eyes: ${traits.eyeShape}`,
-    `Accessory: ${traits.accessory}`,
-    `Mouth: ${traits.mouthWidth}x${traits.mouthHeight}`,
-    `Stars: ${traits.starCount}`
-  ];
-}
-
-function renderTraitList(traits) {
-  elements.traitList.innerHTML = "";
-  traitLabels(traits).forEach((label) => {
-    const item = document.createElement("li");
-    item.textContent = label;
-    elements.traitList.append(item);
-  });
 }
 
 function refreshCanvas() {
@@ -130,7 +110,6 @@ function applySeed(rawSeed) {
   elements.currentSeed.textContent = normalized;
 
   setSeedInUrl(normalized);
-  renderTraitList(state.traits);
   refreshCanvas();
   setGeneratorStatus("Face updated from seed.");
 }

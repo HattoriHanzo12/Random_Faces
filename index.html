@@ -172,7 +172,6 @@
       width: 100% !important;
       height: 100% !important;
       display: block;
-      image-rendering: pixelated;
     }
 
     .controls {
@@ -244,26 +243,6 @@
       font-size: 0.88rem;
       color: var(--accent);
       word-break: break-word;
-    }
-
-    .trait-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .trait-list li {
-      border: 1px solid rgba(118, 213, 255, 0.35);
-      background: rgba(5, 13, 22, 0.82);
-      color: #d0f0ff;
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
-      font-size: 0.75rem;
-      letter-spacing: 0.02em;
     }
 
     .gallery-intro {
@@ -348,7 +327,7 @@
     <header class="hero">
       <h1>Random Faces</h1>
       <p>
-        Hybrid launch mode: generate deterministic live faces from a shareable seed, then browse the minted PNG archive.
+        Classic renderer mode: deterministic snippet-first face generation from a shareable seed, plus the minted PNG archive.
       </p>
       <div class="switcher" role="tablist" aria-label="Site sections">
         <button type="button" class="is-active" data-view="generator" role="tab" aria-selected="true">Live Generator</button>
@@ -374,7 +353,6 @@
           </div>
           <p class="status" id="generator-status"></p>
           <p class="seed-value">Current seed: <span id="current-seed">-</span></p>
-          <ul class="trait-list" id="trait-list" aria-label="Current trait summary"></ul>
         </div>
       </div>
     </section>

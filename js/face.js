@@ -1,39 +1,5 @@
-const PALETTES = [
-  {
-    name: "Neon Lagoon",
-    bgTop: [7, 20, 42],
-    bgBottom: [1, 5, 13],
-    head: [124, 255, 201],
-    eye: [7, 20, 42],
-    detail: [118, 213, 255]
-  },
-  {
-    name: "Cyber Dusk",
-    bgTop: [30, 18, 51],
-    bgBottom: [6, 6, 15],
-    head: [255, 190, 120],
-    eye: [45, 12, 66],
-    detail: [255, 122, 149]
-  },
-  {
-    name: "Signal Core",
-    bgTop: [14, 40, 30],
-    bgBottom: [3, 8, 9],
-    head: [180, 248, 255],
-    eye: [8, 17, 35],
-    detail: [124, 255, 201]
-  },
-  {
-    name: "Night Circuit",
-    bgTop: [24, 24, 33],
-    bgBottom: [5, 7, 16],
-    head: [238, 233, 255],
-    eye: [24, 26, 51],
-    detail: [122, 255, 223]
-  }
-];
-
-const ACCESSORIES = ["none", "antenna", "visor", "blush"];
+const BASE_CANVAS_SIZE = 800;
+const FEATURE_INSET = 6;
 
 function randomRange(rng, min, max) {
   return min + (max - min) * rng();
@@ -43,12 +9,52 @@ function randomInt(rng, min, max) {
   return Math.floor(randomRange(rng, min, max + 1));
 }
 
-function pick(rng, values) {
-  return values[Math.floor(rng() * values.length)];
+function clampChannel(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-function formatColor(rgb) {
-  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+function shiftColor(rgb, delta) {
+  return [
+    clampChannel(rgb[0] + delta),
+    clampChannel(rgb[1] + delta),
+    clampChannel(rgb[2] + delta)
+  ];
+}
+
+function luminance(rgb) {
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+}
+
+function clampLuminance(rgb, min, max) {
+  const lum = luminance(rgb);
+  if (lum < min) {
+    return shiftColor(rgb, min - lum);
+  }
+  if (lum > max) {
+    return shiftColor(rgb, max - lum);
+  }
+  return rgb;
+}
+
+function randomColor(rng) {
+  return [randomInt(rng, 0, 255), randomInt(rng, 0, 255), randomInt(rng, 0, 255)];
+}
+
+function constrainFeatureCenter(faceCenterX, faceCenterY, faceRadius, featureRadius, preferredX, preferredY) {
+  const dx = preferredX - faceCenterX;
+  const dy = preferredY - faceCenterY;
+  const distance = Math.hypot(dx, dy);
+  const maxDistance = Math.max(0, faceRadius - featureRadius - FEATURE_INSET);
+
+  if (distance <= maxDistance || distance === 0) {
+    return { x: preferredX, y: preferredY };
+  }
+
+  const ratio = maxDistance / distance;
+  return {
+    x: faceCenterX + dx * ratio,
+    y: faceCenterY + dy * ratio
+  };
 }
 
 export function xmur3(str) {
@@ -84,173 +90,125 @@ export function createRngFromSeed(seed) {
 export function deriveTraits(seed) {
   const normalizedSeed = String(seed ?? "").trim() || "random-faces-default";
   const rng = createRngFromSeed(normalizedSeed);
-  const palette = pick(rng, PALETTES);
+  const centerX = BASE_CANVAS_SIZE / 2;
+  const centerY = BASE_CANVAS_SIZE / 2;
 
-  const headWidth = randomInt(rng, 225, 290);
-  const headHeight = randomInt(rng, 215, 285);
-  const eyeShape = rng() > 0.45 ? "oval" : "circle";
-  const eyeSize = randomInt(rng, 22, 38);
-  const eyeOffsetX = randomInt(rng, 52, 78);
-  const eyeOffsetY = randomInt(rng, 18, 44);
-  const pupilScale = randomRange(rng, 0.38, 0.62);
-  const browTilt = randomRange(rng, -0.32, 0.32);
-  const mouthWidth = randomInt(rng, 82, 128);
-  const mouthHeight = randomInt(rng, 24, 56);
-  const mouthOffset = randomInt(rng, 34, 62);
-  const mouthWeight = randomRange(rng, 4.8, 8.5);
-  const accessory = pick(rng, ACCESSORIES);
-  const starCount = randomInt(rng, 24, 72);
-  const grain = randomRange(rng, 0.06, 0.22);
+  let backgroundColor = clampLuminance(randomColor(rng), 35, 220);
+  let faceColor = clampLuminance(randomColor(rng), 45, 220);
+
+  if (Math.abs(luminance(backgroundColor) - luminance(faceColor)) < 55) {
+    faceColor = luminance(backgroundColor) > 128 ? shiftColor(faceColor, -85) : shiftColor(faceColor, 85);
+    faceColor = clampLuminance(faceColor, 40, 225);
+  }
+  if (Math.abs(luminance(backgroundColor) - luminance(faceColor)) < 40) {
+    backgroundColor = luminance(faceColor) > 128 ? shiftColor(backgroundColor, -60) : shiftColor(backgroundColor, 60);
+    backgroundColor = clampLuminance(backgroundColor, 30, 220);
+  }
+
+  const faceDiameter = randomInt(rng, 360, 460);
+  const faceRadius = faceDiameter / 2;
+
+  const leftEyeW = randomInt(rng, Math.round(faceDiameter * 0.16), Math.round(faceDiameter * 0.29));
+  const leftEyeH = randomInt(rng, Math.round(faceDiameter * 0.15), Math.round(faceDiameter * 0.28));
+  const rightEyeW = randomInt(rng, Math.round(faceDiameter * 0.16), Math.round(faceDiameter * 0.31));
+  const rightEyeH = randomInt(rng, Math.round(faceDiameter * 0.15), Math.round(faceDiameter * 0.28));
+
+  const eyeCenterY = centerY + randomRange(rng, -faceRadius * 0.4, -faceRadius * 0.1);
+  const leftEyePreferredX = centerX - randomRange(rng, faceRadius * 0.25, faceRadius * 0.45);
+  const rightEyePreferredX = centerX + randomRange(rng, faceRadius * 0.25, faceRadius * 0.45);
+
+  const leftEyeBoundRadius = Math.max(leftEyeW / 2, leftEyeH / 2);
+  const rightEyeBoundRadius = Math.max(rightEyeW / 2, rightEyeH / 2);
+
+  const leftEyeCenter = constrainFeatureCenter(
+    centerX,
+    centerY,
+    faceRadius,
+    leftEyeBoundRadius,
+    leftEyePreferredX,
+    eyeCenterY + randomRange(rng, -faceRadius * 0.05, faceRadius * 0.05)
+  );
+  const rightEyeCenter = constrainFeatureCenter(
+    centerX,
+    centerY,
+    faceRadius,
+    rightEyeBoundRadius,
+    rightEyePreferredX,
+    eyeCenterY + randomRange(rng, -faceRadius * 0.05, faceRadius * 0.05)
+  );
+
+  const highlightSize = randomInt(rng, Math.round(faceDiameter * 0.035), Math.round(faceDiameter * 0.08));
+  const highlightBoundRadius = highlightSize / 2;
+  const leftHighlightCenter = constrainFeatureCenter(
+    centerX,
+    centerY,
+    faceRadius,
+    highlightBoundRadius,
+    leftEyeCenter.x + randomRange(rng, -leftEyeW * 0.22, leftEyeW * 0.08),
+    leftEyeCenter.y + randomRange(rng, leftEyeH * 0.1, leftEyeH * 0.28)
+  );
+  const rightHighlightCenter = constrainFeatureCenter(
+    centerX,
+    centerY,
+    faceRadius,
+    highlightBoundRadius,
+    rightEyeCenter.x + randomRange(rng, -rightEyeW * 0.08, rightEyeW * 0.22),
+    rightEyeCenter.y + randomRange(rng, rightEyeH * 0.1, rightEyeH * 0.28)
+  );
+
+  const mouthW = randomInt(rng, Math.round(faceDiameter * 0.35), Math.round(faceDiameter * 0.55));
+  const mouthH = randomInt(rng, Math.round(faceDiameter * 0.18), Math.round(faceDiameter * 0.34));
+  const mouthBoundRadius = Math.max(mouthW / 2, mouthH / 2);
+  const mouthCenter = constrainFeatureCenter(
+    centerX,
+    centerY,
+    faceRadius,
+    mouthBoundRadius,
+    centerX + randomRange(rng, -faceRadius * 0.16, faceRadius * 0.16),
+    centerY + randomRange(rng, faceRadius * 0.28, faceRadius * 0.58)
+  );
 
   return {
     seed: normalizedSeed,
-    paletteName: palette.name,
-    colors: {
-      backgroundTop: palette.bgTop,
-      backgroundBottom: palette.bgBottom,
-      head: palette.head,
-      eye: palette.eye,
-      detail: palette.detail
-    },
-    headWidth,
-    headHeight,
-    eyeShape,
-    eyeSize,
-    eyeOffsetX,
-    eyeOffsetY,
-    pupilScale,
-    browTilt,
-    mouthWidth,
-    mouthHeight,
-    mouthOffset,
-    mouthWeight,
-    accessory,
-    starCount,
-    grain
+    backgroundColor,
+    faceColor,
+    faceDiameter,
+    leftEyeX: leftEyeCenter.x,
+    rightEyeX: rightEyeCenter.x,
+    eyeY: (leftEyeCenter.y + rightEyeCenter.y) / 2,
+    leftEyeY: leftEyeCenter.y,
+    rightEyeY: rightEyeCenter.y,
+    leftEyeW,
+    leftEyeH,
+    rightEyeW,
+    rightEyeH,
+    leftHighlightX: leftHighlightCenter.x,
+    rightHighlightX: rightHighlightCenter.x,
+    highlightY: (leftHighlightCenter.y + rightHighlightCenter.y) / 2,
+    leftHighlightY: leftHighlightCenter.y,
+    rightHighlightY: rightHighlightCenter.y,
+    highlightSize,
+    mouthX: mouthCenter.x,
+    mouthY: mouthCenter.y,
+    mouthW,
+    mouthH
   };
 }
 
-function drawBackground(p, traits) {
-  const { backgroundTop, backgroundBottom } = traits.colors;
-  for (let y = 0; y < p.height; y += 1) {
-    const ratio = y / (p.height - 1);
-    const r = p.lerp(backgroundTop[0], backgroundBottom[0], ratio);
-    const g = p.lerp(backgroundTop[1], backgroundBottom[1], ratio);
-    const b = p.lerp(backgroundTop[2], backgroundBottom[2], ratio);
-    p.stroke(r, g, b);
-    p.line(0, y, p.width, y);
-  }
-}
-
-function drawStars(p, traits) {
-  const rng = createRngFromSeed(`${traits.seed}-stars`);
-  p.noStroke();
-  for (let i = 0; i < traits.starCount; i += 1) {
-    const x = randomRange(rng, 0, p.width);
-    const y = randomRange(rng, 0, p.height);
-    const alpha = randomRange(rng, 35, 120);
-    const size = randomRange(rng, 1.2, 2.6);
-    p.fill(255, 255, 255, alpha);
-    p.circle(x, y, size);
-  }
-}
-
-function drawAccessory(p, traits, centerX, centerY) {
-  if (traits.accessory === "none") {
-    return;
-  }
-
-  const detail = traits.colors.detail;
-
-  if (traits.accessory === "antenna") {
-    p.stroke(detail[0], detail[1], detail[2]);
-    p.strokeWeight(5);
-    p.line(centerX, centerY - traits.headHeight * 0.54, centerX, centerY - traits.headHeight * 0.76);
-    p.noStroke();
-    p.fill(detail[0], detail[1], detail[2]);
-    p.circle(centerX, centerY - traits.headHeight * 0.81, 18);
-    return;
-  }
-
-  if (traits.accessory === "visor") {
-    p.noStroke();
-    p.fill(detail[0], detail[1], detail[2], 190);
-    p.rectMode(p.CENTER);
-    p.rect(centerX, centerY - traits.eyeOffsetY + 2, traits.eyeOffsetX * 2.7, traits.eyeSize * 1.4, 20);
-    p.rectMode(p.CORNER);
-    return;
-  }
-
-  if (traits.accessory === "blush") {
-    p.noStroke();
-    p.fill(detail[0], detail[1], detail[2], 120);
-    p.ellipse(centerX - traits.eyeOffsetX * 1.15, centerY + 26, 24, 14);
-    p.ellipse(centerX + traits.eyeOffsetX * 1.15, centerY + 26, 24, 14);
-  }
-}
-
 export function renderFace(p, traits) {
-  const centerX = p.width / 2;
-  const centerY = p.height / 2;
-
-  drawBackground(p, traits);
-  drawStars(p, traits);
-
+  p.background(...traits.backgroundColor);
   p.noStroke();
-  p.fill(...traits.colors.head);
-  p.ellipse(centerX, centerY, traits.headWidth, traits.headHeight);
+  p.fill(...traits.faceColor);
+  p.circle(p.width / 2, p.height / 2, traits.faceDiameter);
 
-  drawAccessory(p, traits, centerX, centerY);
+  p.fill(0);
+  p.ellipse(traits.leftEyeX, traits.leftEyeY, traits.leftEyeW, traits.leftEyeH);
+  p.ellipse(traits.rightEyeX, traits.rightEyeY, traits.rightEyeW, traits.rightEyeH);
 
-  p.fill(...traits.colors.eye);
-  const eyeWidth = traits.eyeShape === "circle" ? traits.eyeSize : traits.eyeSize * 1.3;
-  const eyeHeight = traits.eyeShape === "circle" ? traits.eyeSize : traits.eyeSize * 0.78;
+  p.fill(255);
+  p.circle(traits.leftHighlightX, traits.leftHighlightY, traits.highlightSize);
+  p.circle(traits.rightHighlightX, traits.rightHighlightY, traits.highlightSize);
 
-  p.ellipse(centerX - traits.eyeOffsetX, centerY - traits.eyeOffsetY, eyeWidth, eyeHeight);
-  p.ellipse(centerX + traits.eyeOffsetX, centerY - traits.eyeOffsetY, eyeWidth, eyeHeight);
-
-  p.fill(245, 250, 255);
-  const pupilSize = traits.eyeSize * traits.pupilScale;
-  p.ellipse(centerX - traits.eyeOffsetX + 1.5, centerY - traits.eyeOffsetY + 1.5, pupilSize, pupilSize);
-  p.ellipse(centerX + traits.eyeOffsetX + 1.5, centerY - traits.eyeOffsetY + 1.5, pupilSize, pupilSize);
-
-  p.stroke(...traits.colors.eye);
-  p.strokeWeight(4);
-  p.line(
-    centerX - traits.eyeOffsetX - 16,
-    centerY - traits.eyeOffsetY - 24 - traits.browTilt * 30,
-    centerX - traits.eyeOffsetX + 16,
-    centerY - traits.eyeOffsetY - 24 + traits.browTilt * 30
-  );
-  p.line(
-    centerX + traits.eyeOffsetX - 16,
-    centerY - traits.eyeOffsetY - 24 + traits.browTilt * 30,
-    centerX + traits.eyeOffsetX + 16,
-    centerY - traits.eyeOffsetY - 24 - traits.browTilt * 30
-  );
-
-  p.noFill();
-  p.stroke(...traits.colors.eye);
-  p.strokeWeight(traits.mouthWeight);
-  p.arc(
-    centerX,
-    centerY + traits.mouthOffset,
-    traits.mouthWidth,
-    traits.mouthHeight,
-    0,
-    p.PI
-  );
-
-  const grainRng = createRngFromSeed(`${traits.seed}-grain`);
-  p.noStroke();
-  for (let i = 0; i < 120; i += 1) {
-    p.fill(255, 255, 255, randomRange(grainRng, 0, traits.grain * 65));
-    p.circle(randomRange(grainRng, 0, p.width), randomRange(grainRng, 0, p.height), 1.2);
-  }
-
-  p.fill(210, 236, 255, 140);
-  p.textAlign(p.RIGHT, p.BOTTOM);
-  p.textSize(12);
-  p.textFont("IBM Plex Mono");
-  p.text(formatColor(traits.colors.detail), p.width - 12, p.height - 10);
+  p.fill(0);
+  p.ellipse(traits.mouthX, traits.mouthY, traits.mouthW, traits.mouthH);
 }
