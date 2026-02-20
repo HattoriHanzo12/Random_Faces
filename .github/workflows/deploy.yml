@@ -20,7 +20,10 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html dist/
-          cp -R js data visuals dist/
+          cp -R js data dist/
+          if [ -d visuals ]; then
+            cp -R visuals dist/
+          fi
           touch dist/.nojekyll
 
       - name: Publish to gh-pages
