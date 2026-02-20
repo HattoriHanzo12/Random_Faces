@@ -1,3 +1,5 @@
+import { renderFromSeed } from "./face.js";
+
 const DEFAULT_MANIFEST_PATH = "data/minted_faces.json";
 
 function shortId(inscriptionId) {
@@ -7,6 +9,14 @@ function shortId(inscriptionId) {
   return `${inscriptionId.slice(0, 10)}...${inscriptionId.slice(-6)}`;
 }
 
+function asDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 function validItem(item) {
   if (!item || typeof item !== "object") {
     return false;
@@ -14,21 +24,38 @@ function validItem(item) {
   return (
     typeof item.slug === "string" &&
     typeof item.title === "string" &&
-    typeof item.image === "string" &&
+    typeof item.seed === "string" &&
     typeof item.inscriptionId === "string" &&
-    typeof item.explorerUrl === "string"
+    typeof item.explorerUrl === "string" &&
+    typeof item.minterAddress === "string" &&
+    typeof item.mintedAt === "string" &&
+    (item.image === undefined || typeof item.image === "string")
   );
+}
+
+function createPreview(item) {
+  if (item.image) {
+    const image = document.createElement("img");
+    image.src = item.image;
+    image.alt = `${item.title} preview`;
+    image.loading = "lazy";
+    image.decoding = "async";
+    return image;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "mint-preview";
+  canvas.width = 320;
+  canvas.height = 320;
+  renderFromSeed(canvas, item.seed, 320);
+  return canvas;
 }
 
 function createCard(item) {
   const card = document.createElement("article");
   card.className = "mint-card";
 
-  const image = document.createElement("img");
-  image.src = item.image;
-  image.alt = `${item.title} preview`;
-  image.loading = "lazy";
-  image.decoding = "async";
+  const visual = createPreview(item);
 
   const meta = document.createElement("div");
   meta.className = "mint-meta";
@@ -40,14 +67,26 @@ function createCard(item) {
   id.title = item.inscriptionId;
   id.textContent = shortId(item.inscriptionId);
 
+  const seed = document.createElement("code");
+  seed.title = item.seed;
+  seed.textContent = `seed:${item.seed}`;
+
+  const wallet = document.createElement("code");
+  wallet.title = item.minterAddress;
+  wallet.textContent = `wallet:${shortId(item.minterAddress)}`;
+
+  const mintedAt = document.createElement("span");
+  mintedAt.className = "minted-at";
+  mintedAt.textContent = `Minted: ${asDateLabel(item.mintedAt)}`;
+
   const link = document.createElement("a");
   link.href = item.explorerUrl;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   link.textContent = "View on Ordinals";
 
-  meta.append(title, id, link);
-  card.append(image, meta);
+  meta.append(title, id, seed, wallet, mintedAt, link);
+  card.append(visual, meta);
   return card;
 }
 
@@ -66,7 +105,7 @@ export async function initGallery({
   manifestPath = DEFAULT_MANIFEST_PATH
 }) {
   if (!container) {
-    return;
+    return { count: 0, uniqueWallets: 0 };
   }
 
   setStatus(statusElement, "Loading minted faces...");
@@ -86,15 +125,17 @@ export async function initGallery({
     }
 
     const items = payload.filter(validItem);
+    const uniqueWallets = new Set(items.map((item) => item.minterAddress.toLowerCase())).size;
     if (items.length === 0) {
       setStatus(statusElement, "No minted faces listed yet.");
-      return;
+      return { count: 0, uniqueWallets: 0 };
     }
 
     const fragment = document.createDocumentFragment();
     items.forEach((item) => fragment.append(createCard(item)));
     container.append(fragment);
-    setStatus(statusElement, `${items.length} minted face(s) loaded.`);
+    setStatus(statusElement, `${items.length} minted face(s) loaded (${uniqueWallets} unique wallet(s)).`);
+    return { count: items.length, uniqueWallets };
   } catch (error) {
     setStatus(
       statusElement,
@@ -102,5 +143,6 @@ export async function initGallery({
       true
     );
     console.error(error);
+    return { count: 0, uniqueWallets: 0 };
   }
 }

@@ -1,4 +1,4 @@
-const BASE_CANVAS_SIZE = 800;
+export const CANONICAL_SIZE = 800;
 const FEATURE_INSET = 6;
 
 function randomRange(rng, min, max) {
@@ -57,6 +57,12 @@ function constrainFeatureCenter(faceCenterX, faceCenterY, faceRadius, featureRad
   };
 }
 
+function drawEllipse(ctx, x, y, width, height) {
+  ctx.beginPath();
+  ctx.ellipse(x, y, width / 2, height / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 export function xmur3(str) {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i += 1) {
@@ -90,8 +96,8 @@ export function createRngFromSeed(seed) {
 export function deriveTraits(seed) {
   const normalizedSeed = String(seed ?? "").trim() || "random-faces-default";
   const rng = createRngFromSeed(normalizedSeed);
-  const centerX = BASE_CANVAS_SIZE / 2;
-  const centerY = BASE_CANVAS_SIZE / 2;
+  const centerX = CANONICAL_SIZE / 2;
+  const centerY = CANONICAL_SIZE / 2;
 
   let backgroundColor = clampLuminance(randomColor(rng), 35, 220);
   let faceColor = clampLuminance(randomColor(rng), 45, 220);
@@ -175,7 +181,6 @@ export function deriveTraits(seed) {
     faceDiameter,
     leftEyeX: leftEyeCenter.x,
     rightEyeX: rightEyeCenter.x,
-    eyeY: (leftEyeCenter.y + rightEyeCenter.y) / 2,
     leftEyeY: leftEyeCenter.y,
     rightEyeY: rightEyeCenter.y,
     leftEyeW,
@@ -184,7 +189,6 @@ export function deriveTraits(seed) {
     rightEyeH,
     leftHighlightX: leftHighlightCenter.x,
     rightHighlightX: rightHighlightCenter.x,
-    highlightY: (leftHighlightCenter.y + rightHighlightCenter.y) / 2,
     leftHighlightY: leftHighlightCenter.y,
     rightHighlightY: rightHighlightCenter.y,
     highlightSize,
@@ -195,20 +199,52 @@ export function deriveTraits(seed) {
   };
 }
 
-export function renderFace(p, traits) {
-  p.background(...traits.backgroundColor);
-  p.noStroke();
-  p.fill(...traits.faceColor);
-  p.circle(p.width / 2, p.height / 2, traits.faceDiameter);
+export function renderFace(ctx, traits, size = CANONICAL_SIZE) {
+  if (!ctx || !traits) {
+    return;
+  }
 
-  p.fill(0);
-  p.ellipse(traits.leftEyeX, traits.leftEyeY, traits.leftEyeW, traits.leftEyeH);
-  p.ellipse(traits.rightEyeX, traits.rightEyeY, traits.rightEyeW, traits.rightEyeH);
+  const targetSize = Number.isFinite(size) ? Math.max(1, Math.floor(size)) : CANONICAL_SIZE;
+  const scale = targetSize / CANONICAL_SIZE;
 
-  p.fill(255);
-  p.circle(traits.leftHighlightX, traits.leftHighlightY, traits.highlightSize);
-  p.circle(traits.rightHighlightX, traits.rightHighlightY, traits.highlightSize);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, targetSize, targetSize);
+  ctx.fillStyle = `rgb(${traits.backgroundColor[0]}, ${traits.backgroundColor[1]}, ${traits.backgroundColor[2]})`;
+  ctx.fillRect(0, 0, targetSize, targetSize);
+  ctx.scale(scale, scale);
 
-  p.fill(0);
-  p.ellipse(traits.mouthX, traits.mouthY, traits.mouthW, traits.mouthH);
+  ctx.fillStyle = `rgb(${traits.faceColor[0]}, ${traits.faceColor[1]}, ${traits.faceColor[2]})`;
+  drawEllipse(ctx, CANONICAL_SIZE / 2, CANONICAL_SIZE / 2, traits.faceDiameter, traits.faceDiameter);
+
+  ctx.fillStyle = "rgb(0, 0, 0)";
+  drawEllipse(ctx, traits.leftEyeX, traits.leftEyeY, traits.leftEyeW, traits.leftEyeH);
+  drawEllipse(ctx, traits.rightEyeX, traits.rightEyeY, traits.rightEyeW, traits.rightEyeH);
+
+  ctx.fillStyle = "rgb(255, 255, 255)";
+  drawEllipse(ctx, traits.leftHighlightX, traits.leftHighlightY, traits.highlightSize, traits.highlightSize);
+  drawEllipse(ctx, traits.rightHighlightX, traits.rightHighlightY, traits.highlightSize, traits.highlightSize);
+
+  ctx.fillStyle = "rgb(0, 0, 0)";
+  drawEllipse(ctx, traits.mouthX, traits.mouthY, traits.mouthW, traits.mouthH);
+  ctx.restore();
+}
+
+export function renderFromSeed(canvas, seed, size = CANONICAL_SIZE) {
+  if (!canvas || typeof canvas.getContext !== "function") {
+    return null;
+  }
+
+  const targetSize = Number.isFinite(size) ? Math.max(1, Math.floor(size)) : CANONICAL_SIZE;
+  canvas.width = targetSize;
+  canvas.height = targetSize;
+  const ctx = canvas.getContext("2d", { alpha: false });
+
+  if (!ctx) {
+    return null;
+  }
+
+  const traits = deriveTraits(seed);
+  renderFace(ctx, traits, targetSize);
+  return traits;
 }

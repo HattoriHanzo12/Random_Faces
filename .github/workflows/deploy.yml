@@ -16,6 +16,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate official mint manifest
+        run: node src/validate_manifest.js
+
       - name: Build deploy artifact
         run: |
           mkdir -p dist

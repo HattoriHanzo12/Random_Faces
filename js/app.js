@@ -1,22 +1,45 @@
-import { deriveTraits, renderFace } from "./face.js";
+import { deriveTraits, renderFace, CANONICAL_SIZE } from "./face.js";
 import { initGallery } from "./gallery.js";
 
 const SEED_PARAM = "seed";
 const MAX_SEED_LENGTH = 64;
-const CANVAS_SIZE = 800;
+const CANVAS_SIZE = CANONICAL_SIZE;
+const MANIFEST_PATH = "data/minted_faces.json";
+const CONFIG_PATH = "data/inscription_config.json";
+const DEFAULT_CONFIG = {
+  logicInscriptionId: "",
+  maxOfficialSupply: 100,
+  rendererVersion: "classic-seeded-v1"
+};
+
+function isLikelyInscriptionId(value) {
+  return /^[a-f0-9]{64}i\d+$/i.test(String(value || "").trim());
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 const elements = {
   tabButtons: Array.from(document.querySelectorAll("[data-view]")),
   generatorPanel: document.getElementById("generator-panel"),
   galleryPanel: document.getElementById("gallery-panel"),
-  canvasMount: document.getElementById("face-canvas"),
+  canvasElement: document.getElementById("face-canvas-el"),
   seedInput: document.getElementById("seed-input"),
   applySeed: document.getElementById("apply-seed"),
   randomizeSeed: document.getElementById("randomize-seed"),
   copyLink: document.getElementById("copy-link"),
   downloadFace: document.getElementById("download-face"),
+  downloadMintHtml: document.getElementById("download-mint-html"),
   currentSeed: document.getElementById("current-seed"),
   generatorStatus: document.getElementById("generator-status"),
+  logicStatus: document.getElementById("logic-status"),
+  supplyStatus: document.getElementById("supply-status"),
   galleryStatus: document.getElementById("gallery-status"),
   galleryGrid: document.getElementById("gallery-grid")
 };
@@ -24,8 +47,9 @@ const elements = {
 const state = {
   seed: "",
   traits: null,
-  p5Instance: null,
-  canvasElement: null
+  canvasContext: null,
+  inscriptionConfig: { ...DEFAULT_CONFIG },
+  manifestCount: 0
 };
 
 function normalizeSeed(raw) {
@@ -57,16 +81,88 @@ function setGeneratorStatus(message, isError = false) {
   elements.generatorStatus.classList.toggle("error", isError);
 }
 
+function setLogicStatus(message, isError = false) {
+  elements.logicStatus.textContent = message;
+  elements.logicStatus.classList.toggle("error", isError);
+}
+
+function setSupplyStatus(message, isError = false) {
+  elements.supplyStatus.textContent = message;
+  elements.supplyStatus.classList.toggle("error", isError);
+}
+
 function refreshCanvas() {
-  if (!state.p5Instance) {
+  if (!state.canvasContext || !state.traits) {
     return;
   }
 
-  state.p5Instance.redraw();
+  renderFace(state.canvasContext, state.traits, CANVAS_SIZE);
 }
 
 function safeFileName(seed) {
   return seed.toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").slice(0, 40);
+}
+
+function updateMintExportState() {
+  const logicInscriptionId = String(state.inscriptionConfig.logicInscriptionId || "").trim();
+  const exportEnabled = isLikelyInscriptionId(logicInscriptionId);
+  elements.downloadMintHtml.disabled = !exportEnabled;
+
+  if (!exportEnabled) {
+    setLogicStatus("Mint HTML export is disabled until a valid logic inscription ID is set in data/inscription_config.json.");
+    return;
+  }
+
+  setLogicStatus(`Logic inscription loaded: ${logicInscriptionId}`);
+}
+
+function updateSupplyStatusText() {
+  const maxSupply = Number.isFinite(state.inscriptionConfig.maxOfficialSupply)
+    ? state.inscriptionConfig.maxOfficialSupply
+    : DEFAULT_CONFIG.maxOfficialSupply;
+  const prefix = `Official collection: ${state.manifestCount}/${maxSupply}.`;
+  setSupplyStatus(`${prefix} Policy: one mint per wallet (first come, first served).`);
+}
+
+function buildMintHtml(seed, logicInscriptionId) {
+  const safeSeedLiteral = JSON.stringify(seed);
+  const safeLogicId = String(logicInscriptionId).trim();
+  const safeTitleSeed = escapeHtml(seed);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Random Face ${safeTitleSeed}</title>
+  <style>
+    html, body {
+      margin: 0;
+      background: #000;
+      width: 100%;
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    canvas {
+      width: min(100vw, 800px);
+      height: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="face" width="800" height="800"></canvas>
+  <script type="module">
+    import { renderFromSeed } from "/content/${safeLogicId}";
+    const canvas = document.getElementById("face");
+    const seed = ${safeSeedLiteral};
+    renderFromSeed(canvas, seed, 800);
+  </script>
+</body>
+</html>
+`;
 }
 
 async function copyShareLink() {
@@ -89,16 +185,34 @@ async function copyShareLink() {
 }
 
 function downloadCanvas() {
-  if (!state.canvasElement) {
+  if (!elements.canvasElement) {
     setGeneratorStatus("Canvas not ready yet.", true);
     return;
   }
 
   const link = document.createElement("a");
   link.download = `random_face_${safeFileName(state.seed)}.png`;
-  link.href = state.canvasElement.toDataURL("image/png");
+  link.href = elements.canvasElement.toDataURL("image/png");
   link.click();
   setGeneratorStatus("PNG download started.");
+}
+
+function downloadMintHtml() {
+  const logicInscriptionId = String(state.inscriptionConfig.logicInscriptionId || "").trim();
+  if (!isLikelyInscriptionId(logicInscriptionId)) {
+    setGeneratorStatus("Set a valid logic inscription ID in data/inscription_config.json before exporting mint HTML.", true);
+    return;
+  }
+
+  const html = buildMintHtml(state.seed, logicInscriptionId);
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `random_face_${safeFileName(state.seed)}.html`;
+  link.click();
+  URL.revokeObjectURL(url);
+  setGeneratorStatus("Mint HTML download started.");
 }
 
 function applySeed(rawSeed) {
@@ -132,28 +246,75 @@ function initTabs() {
   });
 }
 
-function initP5() {
-  if (typeof window.p5 !== "function") {
-    setGeneratorStatus("p5.js did not load. Please refresh.", true);
+function initCanvas() {
+  if (!elements.canvasElement) {
+    setGeneratorStatus("Canvas element missing from page.", true);
+    return false;
+  }
+
+  elements.canvasElement.width = CANVAS_SIZE;
+  elements.canvasElement.height = CANVAS_SIZE;
+  state.canvasContext = elements.canvasElement.getContext("2d", { alpha: false });
+
+  if (!state.canvasContext) {
+    setGeneratorStatus("Canvas context failed to initialize.", true);
+    return false;
+  }
+
+  return true;
+}
+
+async function loadInscriptionConfig() {
+  state.inscriptionConfig = { ...DEFAULT_CONFIG };
+
+  try {
+    const response = await fetch(CONFIG_PATH, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Config request failed (${response.status}).`);
+    }
+
+    const payload = await response.json();
+    if (!payload || typeof payload !== "object") {
+      throw new Error("Config payload is invalid.");
+    }
+
+    const maxSupply = Number(payload.maxOfficialSupply);
+    state.inscriptionConfig = {
+      logicInscriptionId: String(payload.logicInscriptionId || "").trim(),
+      maxOfficialSupply: Number.isFinite(maxSupply) && maxSupply > 0
+        ? Math.floor(maxSupply)
+        : DEFAULT_CONFIG.maxOfficialSupply,
+      rendererVersion: String(payload.rendererVersion || DEFAULT_CONFIG.rendererVersion)
+    };
+  } catch (error) {
+    setLogicStatus("Could not load inscription config. Using defaults.", true);
+    console.error(error);
+  }
+
+  updateMintExportState();
+}
+
+async function loadManifestCount() {
+  state.manifestCount = 0;
+  try {
+    const response = await fetch(MANIFEST_PATH, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Manifest request failed (${response.status}).`);
+    }
+
+    const payload = await response.json();
+    if (!Array.isArray(payload)) {
+      throw new Error("Manifest is not an array.");
+    }
+
+    state.manifestCount = payload.length;
+  } catch (error) {
+    setSupplyStatus("Could not read minted_faces.json for supply status.", true);
+    console.error(error);
     return;
   }
 
-  const sketch = (p) => {
-    p.setup = () => {
-      const canvas = p.createCanvas(CANVAS_SIZE, CANVAS_SIZE);
-      canvas.parent(elements.canvasMount);
-      state.canvasElement = canvas.elt;
-      p.noLoop();
-    };
-
-    p.draw = () => {
-      if (state.traits) {
-        renderFace(p, state.traits);
-      }
-    };
-  };
-
-  state.p5Instance = new window.p5(sketch);
+  updateSupplyStatusText();
 }
 
 function bindEvents() {
@@ -161,6 +322,7 @@ function bindEvents() {
   elements.randomizeSeed.addEventListener("click", () => applySeed(randomSeed()));
   elements.copyLink.addEventListener("click", copyShareLink);
   elements.downloadFace.addEventListener("click", downloadCanvas);
+  elements.downloadMintHtml.addEventListener("click", downloadMintHtml);
   elements.seedInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       applySeed(elements.seedInput.value);
@@ -170,16 +332,26 @@ function bindEvents() {
 
 async function bootstrap() {
   initTabs();
-  initP5();
+  if (!initCanvas()) {
+    return;
+  }
   bindEvents();
+
+  await loadInscriptionConfig();
+  await loadManifestCount();
 
   const initialSeed = readSeedFromUrl() || randomSeed();
   applySeed(initialSeed);
 
-  await initGallery({
+  const galleryResult = await initGallery({
     container: elements.galleryGrid,
     statusElement: elements.galleryStatus
   });
+
+  if (galleryResult && Number.isFinite(galleryResult.count)) {
+    state.manifestCount = galleryResult.count;
+    updateSupplyStatusText();
+  }
 }
 
 bootstrap();

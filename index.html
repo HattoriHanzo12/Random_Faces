@@ -168,7 +168,7 @@
       height: 100%;
     }
 
-    #face-canvas canvas {
+    #face-canvas-el {
       width: 100% !important;
       height: 100% !important;
       display: block;
@@ -226,6 +226,13 @@
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
     }
 
+    button.action:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
     .status {
       margin: 0;
       min-height: 1.2rem;
@@ -242,6 +249,14 @@
       font-family: "IBM Plex Mono", ui-monospace, monospace;
       font-size: 0.88rem;
       color: var(--accent);
+      word-break: break-word;
+    }
+
+    .meta-note {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
       word-break: break-word;
     }
 
@@ -269,7 +284,14 @@
       width: 100%;
       aspect-ratio: 1 / 1;
       object-fit: cover;
-      image-rendering: pixelated;
+      display: block;
+      border-bottom: 1px solid rgba(118, 213, 255, 0.3);
+    }
+
+    .mint-card canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      height: auto;
       display: block;
       border-bottom: 1px solid rgba(118, 213, 255, 0.3);
     }
@@ -292,6 +314,13 @@
       font-size: 0.76rem;
       color: var(--muted);
       word-break: break-all;
+    }
+
+    .minted-at {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
     }
 
     .mint-meta a {
@@ -327,7 +356,7 @@
     <header class="hero">
       <h1>Random Faces</h1>
       <p>
-        Classic renderer mode: deterministic snippet-first face generation from a shareable seed, plus the minted PNG archive.
+        Deterministic classic renderer with seed sharing, PNG reference export, and mint-ready HTML export for recursive inscription flow.
       </p>
       <div class="switcher" role="tablist" aria-label="Site sections">
         <button type="button" class="is-active" data-view="generator" role="tab" aria-selected="true">Live Generator</button>
@@ -338,7 +367,9 @@
     <section id="generator-panel" class="panel" role="tabpanel" aria-label="Live generator">
       <div class="generator-grid">
         <div class="canvas-wrap">
-          <div id="face-canvas" aria-live="polite"></div>
+          <div id="face-canvas" aria-live="polite">
+            <canvas id="face-canvas-el" width="800" height="800"></canvas>
+          </div>
         </div>
 
         <div class="controls">
@@ -350,15 +381,18 @@
             <button id="randomize-seed" class="action" type="button">Refresh Face</button>
             <button id="copy-link" class="action" type="button">Copy Share Link</button>
             <button id="download-face" class="action" type="button">Download PNG</button>
+            <button id="download-mint-html" class="action" type="button" disabled>Download Mint HTML</button>
           </div>
           <p class="status" id="generator-status"></p>
           <p class="seed-value">Current seed: <span id="current-seed">-</span></p>
+          <p class="meta-note status" id="logic-status"></p>
+          <p class="meta-note status" id="supply-status"></p>
         </div>
       </div>
     </section>
 
     <section id="gallery-panel" class="panel" role="tabpanel" aria-label="Minted gallery" hidden>
-      <p class="gallery-intro">On-chain minted PNG faces from this collection.</p>
+      <p class="gallery-intro">Official mints only: first come, first served, one mint per wallet.</p>
       <p class="status" id="gallery-status"></p>
       <div class="gallery-grid" id="gallery-grid"></div>
     </section>
@@ -368,7 +402,6 @@
     </footer>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
