@@ -19,8 +19,38 @@ function hasValidDate(value) {
   return !Number.isNaN(new Date(value).getTime());
 }
 
-function startsWithHttp(value) {
-  return /^https?:\/\//i.test(value);
+function isLikelyInscriptionId(value) {
+  return /^[a-f0-9]{64}i\d+$/i.test(String(value || "").trim());
+}
+
+function isHttpsUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim());
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function isSafeVisualPath(value) {
+  const normalized = String(value || "").trim().replaceAll("\\", "/");
+  if (!normalized) {
+    return false;
+  }
+  if (!normalized.startsWith("visuals/")) {
+    return false;
+  }
+  if (normalized.includes("..")) {
+    return false;
+  }
+  if (/^(?:[a-z]+:)?\/\//i.test(normalized)) {
+    return false;
+  }
+  return true;
+}
+
+function hasNoWhitespace(value) {
+  return !/\s/.test(String(value || ""));
 }
 
 function validateManifest(manifest, config = {}) {
@@ -37,6 +67,11 @@ function validateManifest(manifest, config = {}) {
   const maxOfficialSupply = Number.isFinite(Number(config.maxOfficialSupply))
     ? Math.max(1, Math.floor(Number(config.maxOfficialSupply)))
     : 100;
+
+  const logicInscriptionId = String(config.logicInscriptionId || "").trim();
+  if (logicInscriptionId && !isLikelyInscriptionId(logicInscriptionId)) {
+    errors.push("data/inscription_config.json field \"logicInscriptionId\" is not a valid inscription ID.");
+  }
 
   if (manifest.length > maxOfficialSupply) {
     errors.push(
@@ -77,8 +112,12 @@ function validateManifest(manifest, config = {}) {
       errors.push(`${prefix} optional field "image" must be a string when provided.`);
     }
 
-    if (isNonEmptyString(item.explorerUrl) && !startsWithHttp(item.explorerUrl)) {
-      errors.push(`${prefix} field "explorerUrl" must start with http:// or https://.`);
+    if (isNonEmptyString(item.explorerUrl) && !isHttpsUrl(item.explorerUrl)) {
+      errors.push(`${prefix} field "explorerUrl" must be a valid https URL.`);
+    }
+
+    if (typeof item.image === "string" && item.image.trim() && !isSafeVisualPath(item.image)) {
+      errors.push(`${prefix} field "image" must be a safe repo-relative path under visuals/.`);
     }
 
     if (isNonEmptyString(item.mintedAt)) {
@@ -96,6 +135,9 @@ function validateManifest(manifest, config = {}) {
     }
 
     if (isNonEmptyString(item.slug)) {
+      if (item.slug.length > 120 || /[\/\\]/.test(item.slug) || !hasNoWhitespace(item.slug)) {
+        errors.push(`${prefix} field "slug" contains unsafe characters.`);
+      }
       const key = item.slug.trim().toLowerCase();
       if (seenSlugs.has(key)) {
         errors.push(`${prefix} has duplicate slug "${item.slug}".`);
@@ -103,7 +145,19 @@ function validateManifest(manifest, config = {}) {
       seenSlugs.add(key);
     }
 
+    if (isNonEmptyString(item.seed)) {
+      if (item.seed.length > 64) {
+        errors.push(`${prefix} field "seed" exceeds 64 characters.`);
+      }
+      if (/[\u0000-\u001f\u007f]/.test(item.seed)) {
+        errors.push(`${prefix} field "seed" contains control characters.`);
+      }
+    }
+
     if (isNonEmptyString(item.inscriptionId)) {
+      if (!isLikelyInscriptionId(item.inscriptionId)) {
+        errors.push(`${prefix} field "inscriptionId" is not a valid inscription ID.`);
+      }
       const key = item.inscriptionId.trim().toLowerCase();
       if (seenInscriptions.has(key)) {
         errors.push(`${prefix} has duplicate inscriptionId "${item.inscriptionId}".`);
@@ -112,6 +166,9 @@ function validateManifest(manifest, config = {}) {
     }
 
     if (isNonEmptyString(item.minterAddress)) {
+      if (!hasNoWhitespace(item.minterAddress) || item.minterAddress.length > 128) {
+        errors.push(`${prefix} field "minterAddress" contains unsafe formatting.`);
+      }
       const key = item.minterAddress.trim().toLowerCase();
       if (seenWallets.has(key)) {
         errors.push(

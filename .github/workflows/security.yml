@@ -1,0 +1,24 @@
+name: Security Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (tracked files + git history)
+        run: bash .github/scripts/secret_scan.sh
+
+      - name: Validate mint manifest and config
+        run: node src/validate_manifest.js

@@ -2,6 +2,32 @@ import { renderFromSeed } from "./face.js";
 
 const DEFAULT_MANIFEST_PATH = "data/minted_faces.json";
 
+function isSafeExplorerUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim(), window.location.origin);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function isSafeVisualPath(value) {
+  const normalized = String(value || "").trim().replaceAll("\\", "/");
+  if (!normalized) {
+    return false;
+  }
+  if (!normalized.startsWith("visuals/")) {
+    return false;
+  }
+  if (normalized.includes("..")) {
+    return false;
+  }
+  if (/^(?:[a-z]+:)?\/\//i.test(normalized)) {
+    return false;
+  }
+  return true;
+}
+
 function shortId(inscriptionId) {
   if (typeof inscriptionId !== "string" || inscriptionId.length < 14) {
     return inscriptionId;
@@ -25,6 +51,7 @@ function validItem(item) {
     typeof item.slug === "string" &&
     typeof item.title === "string" &&
     typeof item.seed === "string" &&
+    item.seed.length <= 64 &&
     typeof item.inscriptionId === "string" &&
     typeof item.explorerUrl === "string" &&
     typeof item.minterAddress === "string" &&
@@ -34,12 +61,13 @@ function validItem(item) {
 }
 
 function createPreview(item) {
-  if (item.image) {
+  if (item.image && isSafeVisualPath(item.image)) {
     const image = document.createElement("img");
     image.src = item.image;
     image.alt = `${item.title} preview`;
     image.loading = "lazy";
     image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
     return image;
   }
 
@@ -80,10 +108,17 @@ function createCard(item) {
   mintedAt.textContent = `Minted: ${asDateLabel(item.mintedAt)}`;
 
   const link = document.createElement("a");
-  link.href = item.explorerUrl;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "View on Ordinals";
+  if (isSafeExplorerUrl(item.explorerUrl)) {
+    link.href = item.explorerUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer nofollow";
+    link.referrerPolicy = "no-referrer";
+    link.textContent = "View on Ordinals";
+  } else {
+    link.removeAttribute("href");
+    link.textContent = "Explorer link unavailable";
+    link.setAttribute("aria-disabled", "true");
+  }
 
   meta.append(title, id, seed, wallet, mintedAt, link);
   card.append(visual, meta);
@@ -109,7 +144,7 @@ export async function initGallery({
   }
 
   setStatus(statusElement, "Loading minted faces...");
-  container.innerHTML = "";
+  container.replaceChildren();
 
   try {
     const response = await fetch(manifestPath, { cache: "no-store" });
