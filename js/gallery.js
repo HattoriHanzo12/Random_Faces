@@ -1,0 +1,183 @@
+import { renderFromSeed } from "./face.js";
+
+const DEFAULT_MANIFEST_PATH = "data/minted_faces.json";
+
+function isSafeExplorerUrl(value) {
+  try {
+    const url = new URL(String(value || "").trim(), window.location.origin);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function isSafeVisualPath(value) {
+  const normalized = String(value || "").trim().replaceAll("\\", "/");
+  if (!normalized) {
+    return false;
+  }
+  if (!normalized.startsWith("visuals/")) {
+    return false;
+  }
+  if (normalized.includes("..")) {
+    return false;
+  }
+  if (/^(?:[a-z]+:)?\/\//i.test(normalized)) {
+    return false;
+  }
+  return true;
+}
+
+function shortId(inscriptionId) {
+  if (typeof inscriptionId !== "string" || inscriptionId.length < 14) {
+    return inscriptionId;
+  }
+  return `${inscriptionId.slice(0, 10)}...${inscriptionId.slice(-6)}`;
+}
+
+function asDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function validItem(item) {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+  return (
+    typeof item.slug === "string" &&
+    typeof item.title === "string" &&
+    typeof item.seed === "string" &&
+    item.seed.length <= 64 &&
+    typeof item.inscriptionId === "string" &&
+    typeof item.explorerUrl === "string" &&
+    typeof item.minterAddress === "string" &&
+    typeof item.mintedAt === "string" &&
+    (item.image === undefined || typeof item.image === "string")
+  );
+}
+
+function createPreview(item) {
+  if (item.image && isSafeVisualPath(item.image)) {
+    const image = document.createElement("img");
+    image.src = item.image;
+    image.alt = `${item.title} preview`;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.referrerPolicy = "no-referrer";
+    return image;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "mint-preview";
+  canvas.width = 320;
+  canvas.height = 320;
+  renderFromSeed(canvas, item.seed, 320);
+  return canvas;
+}
+
+function createCard(item) {
+  const card = document.createElement("article");
+  card.className = "mint-card";
+
+  const visual = createPreview(item);
+
+  const meta = document.createElement("div");
+  meta.className = "mint-meta";
+
+  const title = document.createElement("h3");
+  title.textContent = item.title;
+
+  const id = document.createElement("code");
+  id.title = item.inscriptionId;
+  id.textContent = shortId(item.inscriptionId);
+
+  const seed = document.createElement("code");
+  seed.title = item.seed;
+  seed.textContent = `seed:${item.seed}`;
+
+  const wallet = document.createElement("code");
+  wallet.title = item.minterAddress;
+  wallet.textContent = `wallet:${shortId(item.minterAddress)}`;
+
+  const mintedAt = document.createElement("span");
+  mintedAt.className = "minted-at";
+  mintedAt.textContent = `Minted: ${asDateLabel(item.mintedAt)}`;
+
+  const link = document.createElement("a");
+  if (isSafeExplorerUrl(item.explorerUrl)) {
+    link.href = item.explorerUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer nofollow";
+    link.referrerPolicy = "no-referrer";
+    link.textContent = "View on Ordinals";
+  } else {
+    link.removeAttribute("href");
+    link.textContent = "Explorer link unavailable";
+    link.setAttribute("aria-disabled", "true");
+  }
+
+  meta.append(title, id, seed, wallet, mintedAt, link);
+  card.append(visual, meta);
+  return card;
+}
+
+function setStatus(statusElement, message, isError = false) {
+  if (!statusElement) {
+    return;
+  }
+
+  statusElement.textContent = message;
+  statusElement.classList.toggle("error", isError);
+}
+
+export async function initGallery({
+  container,
+  statusElement,
+  manifestPath = DEFAULT_MANIFEST_PATH
+}) {
+  if (!container) {
+    return { count: 0, uniqueWallets: 0 };
+  }
+
+  setStatus(statusElement, "Loading minted faces...");
+  container.replaceChildren();
+
+  try {
+    const response = await fetch(manifestPath, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error(`Manifest request failed (${response.status})`);
+    }
+
+    const payload = await response.json();
+
+    if (!Array.isArray(payload)) {
+      throw new Error("Manifest is not an array.");
+    }
+
+    const items = payload.filter(validItem);
+    const uniqueWallets = new Set(items.map((item) => item.minterAddress.toLowerCase())).size;
+    if (items.length === 0) {
+      setStatus(statusElement, "No minted faces listed yet.");
+      return { count: 0, uniqueWallets: 0 };
+    }
+
+    const fragment = document.createDocumentFragment();
+    items.forEach((item) => fragment.append(createCard(item)));
+    container.append(fragment);
+    setStatus(statusElement, `${items.length} minted face(s) loaded (${uniqueWallets} unique wallet(s)).`);
+    return { count: items.length, uniqueWallets };
+  } catch (error) {
+    setStatus(
+      statusElement,
+      "Could not load gallery manifest. Check data/minted_faces.json.",
+      true
+    );
+    console.error(error);
+    return { count: 0, uniqueWallets: 0 };
+  }
+}
