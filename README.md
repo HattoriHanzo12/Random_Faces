@@ -138,6 +138,67 @@ Open:
 2. `gh-pages` is deploy artifact only.
 3. Push to `main` runs manifest validation and deploys to GitHub Pages.
 
+## Automatic Mint Watcher (Detect + Review)
+
+The repo now includes a scheduled GitHub Actions watcher that scans for new recursive HTML inscriptions referencing the current renderer logic inscription (`data/inscription_config.json.logicInscriptionId`).
+
+Behavior:
+
+1. Detects candidate mints via Hiro metadata (`recursive` + `recursion_refs`) with a lookback window.
+2. Fetches inscription HTML from `ordinals.com/content/<inscriptionId>` and parses:
+   - seed (`const seed = "..."`)
+   - renderer logic import (`/content/<logicInscriptionId>`)
+3. Applies official collection policy checks using `src/validate_manifest.js`.
+4. Creates/updates a single draft PR on branch `codex/mint-watch-inbox` with proposed `data/minted_faces.json` additions (review required).
+5. Updates a rolling GitHub issue digest (`Mint Watch Inbox`) and optionally posts a matching digest comment to Linear.
+
+Important:
+
+1. No auto-merge.
+2. No direct edits to `main`.
+3. Gallery only updates after a human reviews and merges the draft PR.
+4. Detection may lag due to Hiro/Ordinals indexer delays.
+
+### Watcher Workflow
+
+Workflow file:
+
+1. `.github/workflows/mint_watch.yml`
+
+Triggers:
+
+1. `schedule` (every 5 minutes)
+2. `workflow_dispatch`
+
+### Optional Repo Variables / Secrets
+
+Repository Variables (`Settings -> Secrets and variables -> Actions -> Variables`):
+
+1. `LINEAR_NOTIFY_ISSUE_ID` (default `CLA-30`)
+2. `MINT_WATCH_LOOKBACK_HOURS` (default `72`)
+3. `MINT_WATCH_MAX_PAGES` (default `10`)
+4. `MINT_WATCH_CONFIRMATIONS` (default `1`)
+
+Repository Secret:
+
+1. `LINEAR_API_KEY` (optional; if unset, GitHub digest/PR still work and Linear is skipped)
+
+### Local Dry Run (Watcher)
+
+You can run the watcher locally to inspect detections without editing tracked files:
+
+```bash
+node src/mint_watch.js --lookback-hours 24 --max-pages 2
+```
+
+Outputs are written to `.mint-watch/` (gitignored), including:
+
+1. `.mint-watch/result.json`
+2. `.mint-watch/proposed_minted_faces.json`
+3. `.mint-watch/issue_digest.md`
+4. `.mint-watch/pr_body.md`
+5. `.mint-watch/summary.md`
+
 ## License
 
 MIT. See `LICENSE`.

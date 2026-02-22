@@ -1,0 +1,181 @@
+name: Mint Watch (Detect + Review)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: mint-watch-inbox
+  cancel-in-progress: false
+
+jobs:
+  mint-watch:
+    runs-on: ubuntu-latest
+    env:
+      MINT_WATCH_LOOKBACK_HOURS: ${{ vars.MINT_WATCH_LOOKBACK_HOURS || '72' }}
+      MINT_WATCH_MAX_PAGES: ${{ vars.MINT_WATCH_MAX_PAGES || '10' }}
+      MINT_WATCH_CONFIRMATIONS: ${{ vars.MINT_WATCH_CONFIRMATIONS || '1' }}
+      MINT_WATCH_OUT_DIR: .mint-watch
+      LINEAR_NOTIFY_ISSUE_ID: ${{ vars.LINEAR_NOTIFY_ISSUE_ID || 'CLA-30' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run mint watcher scan
+        id: watch
+        run: node src/mint_watch.js
+
+      - name: Publish watcher summary
+        if: always()
+        run: |
+          if [ -n "${{ steps.watch.outputs.summary_path }}" ] && [ -f "${{ steps.watch.outputs.summary_path }}" ]; then
+            cat "${{ steps.watch.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Mint watcher did not produce a summary file." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Prepare manifest proposal for draft PR
+        if: steps.watch.outputs.proposal_changed == 'true'
+        run: |
+          cp "${{ steps.watch.outputs.proposed_manifest_path }}" data/minted_faces.json
+          node src/validate_manifest.js
+
+      - name: Create or update draft PR (mint watch inbox)
+        id: cpr
+        if: steps.watch.outputs.proposal_changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: codex/mint-watch-inbox
+          base: main
+          delete-branch: false
+          draft: true
+          title: ${{ steps.watch.outputs.pr_title }}
+          body-path: ${{ steps.watch.outputs.pr_body_path }}
+          commit-message: "chore: update mint watch inbox proposals"
+          add-paths: |
+            data/minted_faces.json
+
+      - name: Upsert GitHub Mint Watch Inbox issue digest
+        id: inbox
+        if: steps.watch.outcome == 'success'
+        uses: actions/github-script@v7
+        env:
+          MINT_WATCH_DIGEST_PATH: ${{ steps.watch.outputs.issue_digest_path }}
+          MINT_WATCH_STABLE_HASH: ${{ steps.watch.outputs.stable_hash }}
+          MINT_WATCH_PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+          MINT_WATCH_ISSUE_TITLE: Mint Watch Inbox
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- mint-watch-digest -->';
+            const hashMarkerPrefix = '<!-- mint-watch-stable-hash:';
+            const digestPath = process.env.MINT_WATCH_DIGEST_PATH;
+            const stableHash = String(process.env.MINT_WATCH_STABLE_HASH || '').trim();
+            const prUrl = String(process.env.MINT_WATCH_PR_URL || '').trim();
+            const issueTitle = String(process.env.MINT_WATCH_ISSUE_TITLE || 'Mint Watch Inbox');
+
+            if (!digestPath || !fs.existsSync(digestPath)) {
+              core.setFailed(`Digest file not found: ${digestPath}`);
+              return;
+            }
+
+            function injectPrUrl(body, url) {
+              if (!url || body.includes('Draft PR:')) {
+                return body;
+              }
+              const lines = body.split('\n');
+              const idx = lines.findIndex((line) => line.startsWith('- Ignored (already in manifest):'));
+              if (idx >= 0) {
+                lines.splice(idx + 1, 0, `- Draft PR: ${url}`);
+                return `${lines.join('\n').replace(/\s+$/, '')}\n`;
+              }
+              return `${body.replace(/\s+$/, '')}\n\n- Draft PR: ${url}\n`;
+            }
+
+            function extractHash(body) {
+              const match = String(body || '').match(/<!--\s*mint-watch-stable-hash:([a-f0-9]{64})\s*-->/i);
+              return match ? match[1] : '';
+            }
+
+            let digestBody = fs.readFileSync(digestPath, 'utf8');
+            digestBody = injectPrUrl(digestBody, prUrl);
+
+            const { owner, repo } = context.repo;
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            let inboxIssue = openIssues.find((issue) => !issue.pull_request && issue.title === issueTitle);
+            if (!inboxIssue) {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title: issueTitle,
+                body: 'Rolling inbox for automatic Random Faces mint watcher detections and draft PR proposals.'
+              });
+              inboxIssue = created.data;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: inboxIssue.number,
+              per_page: 100
+            });
+
+            const existing = comments.find((comment) => String(comment.body || '').includes(marker));
+            let digestChanged = 'false';
+
+            if (existing) {
+              const existingHash = extractHash(existing.body || '');
+              if (stableHash && existingHash && stableHash === existingHash) {
+                core.info('Mint watch digest stable hash unchanged; skipping comment update.');
+              } else {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body: digestBody
+                });
+                digestChanged = 'true';
+              }
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: inboxIssue.number,
+                body: digestBody
+              });
+              digestChanged = 'true';
+            }
+
+            core.setOutput('issue_number', String(inboxIssue.number));
+            core.setOutput('issue_url', inboxIssue.html_url);
+            core.setOutput('digest_changed', digestChanged);
+
+      - name: Update Linear digest (best effort)
+        if: steps.watch.outcome == 'success' && steps.inbox.outputs.digest_changed == 'true'
+        continue-on-error: true
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_NOTIFY_ISSUE_ID: ${{ env.LINEAR_NOTIFY_ISSUE_ID }}
+          MINT_WATCH_DIGEST_PATH: ${{ steps.watch.outputs.issue_digest_path }}
+          MINT_WATCH_PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+        run: node src/linear_upsert_comment.js
