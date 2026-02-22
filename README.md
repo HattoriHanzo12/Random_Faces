@@ -178,10 +178,25 @@ Repository Variables (`Settings -> Secrets and variables -> Actions -> Variables
 2. `MINT_WATCH_LOOKBACK_HOURS` (default `72`)
 3. `MINT_WATCH_MAX_PAGES` (default `10`)
 4. `MINT_WATCH_CONFIRMATIONS` (default `1`)
+5. `MINT_WATCH_EMAIL_TO` (default `tutifrooti@proton.me`)
 
 Repository Secret:
 
 1. `LINEAR_API_KEY` (optional; if unset, GitHub digest/PR still work and Linear is skipped)
+2. `MINT_WATCH_EMAIL_WEBHOOK_URL` (optional; if unset, email webhook notifications are skipped)
+3. `MINT_WATCH_EMAIL_WEBHOOK_BEARER` (optional bearer token for the webhook endpoint)
+
+### Email Webhook Payload (Optional)
+
+If you want email alerts, point `MINT_WATCH_EMAIL_WEBHOOK_URL` at a webhook endpoint (for example Zapier/Make/Pipedream) that can send an email to the `to` address in the payload.
+
+The watcher posts JSON with:
+
+1. `to` (recipient email, defaults to `tutifrooti@proton.me`)
+2. `subject`
+3. `text` (plain text digest)
+4. `markdown` (GitHub issue digest markdown)
+5. `metadata` (repo/run/PR/issue links + stats)
 
 ### Local Dry Run (Watcher)
 

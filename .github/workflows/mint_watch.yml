@@ -23,6 +23,7 @@ jobs:
       MINT_WATCH_CONFIRMATIONS: ${{ vars.MINT_WATCH_CONFIRMATIONS || '1' }}
       MINT_WATCH_OUT_DIR: .mint-watch
       LINEAR_NOTIFY_ISSUE_ID: ${{ vars.LINEAR_NOTIFY_ISSUE_ID || 'CLA-30' }}
+      MINT_WATCH_EMAIL_TO: ${{ vars.MINT_WATCH_EMAIL_TO || 'tutifrooti@proton.me' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -179,3 +180,17 @@ jobs:
           MINT_WATCH_DIGEST_PATH: ${{ steps.watch.outputs.issue_digest_path }}
           MINT_WATCH_PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
         run: node src/linear_upsert_comment.js
+
+      - name: Send email webhook digest (best effort)
+        if: steps.watch.outcome == 'success' && steps.inbox.outputs.digest_changed == 'true'
+        continue-on-error: true
+        env:
+          MINT_WATCH_EMAIL_WEBHOOK_URL: ${{ secrets.MINT_WATCH_EMAIL_WEBHOOK_URL }}
+          MINT_WATCH_EMAIL_WEBHOOK_BEARER: ${{ secrets.MINT_WATCH_EMAIL_WEBHOOK_BEARER }}
+          MINT_WATCH_EMAIL_TO: ${{ env.MINT_WATCH_EMAIL_TO }}
+          MINT_WATCH_RESULT_PATH: ${{ steps.watch.outputs.result_path }}
+          MINT_WATCH_DIGEST_PATH: ${{ steps.watch.outputs.issue_digest_path }}
+          MINT_WATCH_ISSUE_URL: ${{ steps.inbox.outputs.issue_url }}
+          MINT_WATCH_PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
+          MINT_WATCH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node src/email_webhook_notify.js
